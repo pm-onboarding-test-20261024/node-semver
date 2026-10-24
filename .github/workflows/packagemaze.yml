@@ -100,7 +100,7 @@ jobs:
           purpose: publish
           package: '@pm-onboarding-test-20261024/semver'
       - name: Publish the built tarball with provenance to the test Feed
-        run: npm publish dist/*.tgz --ignore-scripts --provenance --access public --tag verification
+        run: npm publish ./dist/*.tgz --ignore-scripts --provenance --access public --tag verification
         env:
           MAZE_TOKEN: ${{ steps.access.outputs.token }}
 
