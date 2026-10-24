@@ -1,0 +1,135 @@
+name: PackageMaze install, test, publish and read back
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packagemaze-verification-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PACKAGE: '@pm-onboarding-test-20261024/semver'
+  VERSION: 7.8.5-verify.${{ github.run_id }}.${{ github.run_attempt }}
+
+jobs:
+  install:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.18.1'
+      - id: access
+        uses: packagemaze/setup-maze@88f78eca0212b355b26babf206c6151abb62f22b
+        with:
+          feed: pm-onboarding-test-20261024/npm
+          purpose: install
+      - name: Install dependencies through PackageMaze without package scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
+        env:
+          MAZE_TOKEN: ${{ steps.access.outputs.token }}
+      - run: tar -czf dependencies.tar.gz node_modules package-lock.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: dependencies
+          path: dependencies.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  build:
+    needs: install
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.18.1'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: dependencies
+      - run: tar -xzf dependencies.tar.gz
+      - name: Run upstream tests without OIDC or package credentials
+        run: npm test --ignore-scripts
+      - name: Build a unique test release
+        run: |
+          npm version "$VERSION" --no-git-tag-version --ignore-scripts
+          mkdir dist
+          npm pack --ignore-scripts --pack-destination dist
+          sha256sum dist/*.tgz
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release
+          path: dist/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.18.1'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: release
+          path: dist
+      - id: access
+        uses: packagemaze/setup-maze@88f78eca0212b355b26babf206c6151abb62f22b
+        with:
+          feed: pm-onboarding-test-20261024/npm
+          purpose: publish
+          package: '@pm-onboarding-test-20261024/semver'
+      - name: Publish the built tarball with provenance to the test Feed
+        run: npm publish dist/*.tgz --ignore-scripts --provenance --access public --tag verification
+        env:
+          MAZE_TOKEN: ${{ steps.access.outputs.token }}
+
+  verify-install:
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.18.1'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: release
+          path: dist
+      - id: access
+        uses: packagemaze/setup-maze@88f78eca0212b355b26babf206c6151abb62f22b
+        with:
+          feed: pm-onboarding-test-20261024/npm
+          purpose: install
+      - name: Install the exact published version and compare Artifact bytes
+        run: |
+          export NPM_CONFIG_USERCONFIG="$GITHUB_WORKSPACE/.npmrc"
+          npm install --prefix readback --ignore-scripts --no-audit --no-fund "$PACKAGE@$VERSION"
+          npm pack "$PACKAGE@$VERSION" --ignore-scripts --pack-destination readback
+          cmp dist/*.tgz readback/*.tgz
+          npm ls --prefix readback --depth=0
+          sha256sum readback/*.tgz
+        env:
+          MAZE_TOKEN: ${{ steps.access.outputs.token }}
