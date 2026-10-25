@@ -38,3 +38,14 @@ manifest, keep the existing Project identity, and record waiting time separately
 from processing and UI refresh. The first discovery-version refresh is a
 different sample from a later source-only update that can reuse its reading.
 No manual Rescan or publication workflow is needed for this check.
+
+## First automatic check result
+
+On 25 October 2026, the normal main push at `ac85c056d4b9a3bb55ba3e8474e690598ad46134`
+completed automatic discovery after the protected PackageMaze release.
+Project 2 retained its identity and showed the four development declarations
+and version constraints above, with no runtime declarations.
+
+This was the first refresh after a scanner interpretation change. A subsequent
+source-only update should preserve those results while allowing reuse of the
+completed reading. No manual Rescan was used.
