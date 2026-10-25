@@ -25,3 +25,16 @@ evaluation was not performed by this workflow.
 
 The workflow runs only when manually dispatched. Updating this record does
 not publish another package version.
+
+## Automatic Project reading
+
+The source expectations for this fork are zero runtime dependencies and four
+development dependencies in `package.json`: `@npmcli/eslint-config` (`^7.0.0`),
+`@npmcli/template-oss` (`5.0.0`), `benchmark` (`^2.1.4`) and `tap` (`^16.0.0`).
+
+Automatic discovery is verified by a normal GitHub event after a protected
+PackageMaze release. Compare the dependency groups and constraints with this
+manifest, keep the existing Project identity, and record waiting time separately
+from processing and UI refresh. The first discovery-version refresh is a
+different sample from a later source-only update that can reuse its reading.
+No manual Rescan or publication workflow is needed for this check.
