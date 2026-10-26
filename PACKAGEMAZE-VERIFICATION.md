@@ -30,7 +30,7 @@ not publish another package version.
 
 The source expectations for this fork are zero runtime dependencies and four
 development dependencies in `package.json`: `@npmcli/eslint-config` (`^7.0.0`),
-`@npmcli/template-oss` (`5.0.0`), `benchmark` (`^2.1.4`) and `tap` (`^16.0.0`).
+`@npmcli/template-oss` (`5.0.0`), `benchmark` (`2.1.4`) and `tap` (`^16.0.0`).
 
 Automatic discovery is verified by a normal GitHub event after a protected
 PackageMaze release. Compare the dependency groups and constraints with this
